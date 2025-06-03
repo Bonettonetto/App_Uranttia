@@ -8,6 +8,8 @@ from math import radians, sin, cos, sqrt, atan2
 st.set_page_config(page_title="Localizador de Transportadoras", layout="wide")
 st.title("🚛 Localizador de Cargas por Proximidade")
 
+
+
 # Função para calcular distância (Haversine)
 def calcular_distancia(lat1, lon1, lat2, lon2):
     R = 6371.0  # Raio da Terra em km
