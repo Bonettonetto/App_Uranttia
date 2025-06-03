@@ -10,6 +10,8 @@ st.title("🚛 Localizador de Cargas por Proximidade")
 
 
 
+
+
 # Função para calcular distância (Haversine)
 def calcular_distancia(lat1, lon1, lat2, lon2):
     R = 6371.0  # Raio da Terra em km
