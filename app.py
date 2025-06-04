@@ -104,6 +104,9 @@ if buscar and cidade_input and uf_input and api_key:
     'ja_carregamos', 'temos_cadastro', 'produto',
     'preco', 'latitude', 'longitude'
 ]
+    st.write("Colunas carregadas do banco:")
+    st.write(df.columns.tolist())
+    
     if not all(col in df.columns for col in colunas_necessarias):
         st.error("❌ A tabela não possui todas as colunas necessárias.")
     else:
