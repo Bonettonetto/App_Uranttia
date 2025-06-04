@@ -95,6 +95,17 @@ if buscar:
         st.error("❌ UF inválida")
     elif not api_key:
         st.warning("⚠️ Por favor, insira a chave da API")
+if buscar and cidade_input and uf_input and api_key:
+    df = carregar_dados_postgres()
+
+    colunas_necessarias = [
+    'cidade_origem', 'uf_origem', 'nome_grupo',
+    'transportadora', 'empresa', 'contato',
+    'ja_carregamos', 'temos_cadastro', 'produto',
+    'preco', 'latitude', 'longitude'
+]
+    if not all(col in df.columns for col in colunas_necessarias):
+        st.error("❌ A tabela não possui todas as colunas necessárias.")
     else:
         with st.spinner("Carregando dados..."):
             df = carregar_dados_postgres()
