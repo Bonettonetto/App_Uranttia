@@ -106,7 +106,7 @@ if buscar and cidade_input and uf_input and api_key:
 ]
     st.write("Colunas carregadas do banco:")
     st.write(df.columns.tolist())
-    
+
     if not all(col in df.columns for col in colunas_necessarias):
         st.error("❌ A tabela não possui todas as colunas necessárias.")
     else:
@@ -127,7 +127,7 @@ if buscar and cidade_input and uf_input and api_key:
 
                     if lat_user is not None and lon_user is not None:
                         # Remover linhas com coordenadas nulas
-                        df = df.dropna(subset=['Latitude', 'Longitude'])
+                        df = df.dropna(subset=['latitude', 'longitude'])
                         
                         # Calcular distâncias de forma vetorizada
                         df['Distancia_km'] = calcular_distancia_vetorizada(
