@@ -55,7 +55,12 @@ def carregar_dados_postgres():
 if buscar and cidade_input and uf_input and api_key:
     df = carregar_dados_postgres()
 
-    colunas_necessarias = ['Cidade_origem', 'UF_origem', 'Nome_grupo', 'Transportadora', 'Contato', 'Latitude', 'Longitude']
+    colunas_necessarias = [
+    'cidade_origem', 'uf_origem', 'nome_grupo',
+    'transportadora', 'empresa', 'contato',
+    'ja_carregamos', 'temos_cadastro', 'produto',
+    'preco', 'latitude', 'longitude'
+]
     if not all(col in df.columns for col in colunas_necessarias):
         st.error("❌ A tabela não possui todas as colunas necessárias.")
     else:
