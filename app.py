@@ -132,8 +132,8 @@ if buscar and cidade_input and uf_input and api_key:
                         # Calcular distâncias de forma vetorizada
                         df['Distancia_km'] = calcular_distancia_vetorizada(
                             lat_user, lon_user,
-                            df['Latitude'].values,
-                            df['Longitude'].values
+                            df['latitude'].values,
+                            df['longitude'].values
                         )
 
                         df_mais_proximas = df.sort_values("Distancia_km").head(raio)
