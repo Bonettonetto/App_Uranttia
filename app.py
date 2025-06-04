@@ -30,36 +30,32 @@ def carregar_dados_postgres():
         query = "SELECT * FROM app_transportadoras"
         df = pd.read_sql(query, conn)
         conn.close()
+
+        # Padronizar nomes de colunas para evitar erros com maiúsculas
+        df.columns = [col.lower() for col in df.columns]
         return df
     except Exception as e:
         st.error(f"❌ Erro ao conectar ao banco de dados: {str(e)}")
         return None
 
-# Função para calcular distância (Haversine) - Versão vetorizada
+# Cálculo vetorizado de distância
 def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
-    R = 6371.0  # Raio da Terra em km
-    
-    # Converter para radianos
+    R = 6371.0
     lat1, lon1 = np.radians(lat1), np.radians(lon1)
     lats, lons = np.radians(lats), np.radians(lons)
-    
-    # Calcular diferenças
     dlat = lats - lat1
     dlon = lons - lon1
-    
-    # Fórmula de Haversine vetorizada
     a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lats) * np.sin(dlon/2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return R * c
 
-# Função para geocodificar a cidade do usuário via OpenCage
+# Geocodificação via OpenCage
 def geocodificar_cidade(cidade, uf, api_key):
     try:
         url = f"https://api.opencagedata.com/geocode/v1/json?q={cidade},+{uf},+Brasil&key={api_key}&language=pt&limit=1"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         data = response.json()
-        
         if data['results']:
             geometry = data['results'][0]['geometry']
             return geometry['lat'], geometry['lng']
@@ -70,12 +66,12 @@ def geocodificar_cidade(cidade, uf, api_key):
         st.error(f"❌ Erro na API de geocodificação: {str(e)}")
         return None, None
 
-# Função para validar UF
+# Validar UF
 def validar_uf(uf):
-    ufs_validas = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+    ufs_validas = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
     return uf.upper() in ufs_validas
 
-# Interface principal
+# Interface
 st.title("🚛 Localizador de Cargas por Proximidade")
 
 # Sidebar
@@ -95,67 +91,68 @@ if buscar:
         st.error("❌ UF inválida")
     elif not api_key:
         st.warning("⚠️ Por favor, insira a chave da API")
-if buscar and cidade_input and uf_input and api_key:
-    df = carregar_dados_postgres()
-
-    colunas_necessarias = [
-    'cidade_origem', 'uf_origem', 'nome_grupo',
-    'transportadora', 'empresa', 'contato',
-    'ja_carregamos', 'temos_cadastro', 'produto',
-    'preco', 'latitude', 'longitude'
-]
-    st.write("Colunas carregadas do banco:")
-    st.write(df.columns.tolist())
-
-    if not all(col in df.columns for col in colunas_necessarias):
-        st.error("❌ A tabela não possui todas as colunas necessárias.")
     else:
-        with st.spinner("Carregando dados..."):
-            df = carregar_dados_postgres()
-            
-            if df is not None:
-                colunas_necessarias = [
-    'cidade_origem', 'uf_origem', 'nome_grupo',
-    'transportadora', 'empresa', 'contato',
-    'ja_carregamos', 'temos_cadastro', 'produto',
-    'preco', 'latitude', 'longitude'
-]
-                if not all(col in df.columns for col in colunas_necessarias):
-                    st.error("❌ A tabela não possui todas as colunas necessárias")
-                else:
-                    lat_user, lon_user = geocodificar_cidade(cidade_input, uf_input, api_key)
+        df = carregar_dados_postgres()
 
-                    if lat_user is not None and lon_user is not None:
-                        # Remover linhas com coordenadas nulas
-                        df = df.dropna(subset=['latitude', 'longitude'])
-                        
-                        # Calcular distâncias de forma vetorizada
-                        df['Distancia_km'] = calcular_distancia_vetorizada(
-                            lat_user, lon_user,
-                            df['latitude'].values,
-                            df['longitude'].values
-                        )
+        colunas_necessarias = [
+            'cidade_origem', 'uf_origem', 'nome_grupo',
+            'transportadora', 'empresa', 'contato',
+            'ja_carregamos', 'temos_cadastro', 'produto',
+            'preco', 'latitude', 'longitude'
+        ]
 
-                        df_mais_proximas = df.sort_values("Distancia_km").head(raio)
+        if df is None:
+            st.stop()
 
-                        # Exibir resultados
-                        st.success(f"✅ Encontradas {len(df_mais_proximas)} transportadoras próximas")
-                        
-                        # Criar colunas para melhor organização
-                        cols = st.columns(2)
-                        
-                        for idx, row in df_mais_proximas.iterrows():
-                            with cols[idx % 2]:
-                                st.info(f"📍 {row['Cidade_origem']}/{row['UF_origem']} - {row['Distancia_km']:.2f} km")
-                                st.write(f"**Grupo de WhatsApp:** {row['Nome_grupo']}")
-                                st.write(f"**Transportadora:** {row['Transportadora']}")
-                                st.write(f"**Contato:** {row['Contato']}")
-                                st.markdown("---")
+        st.write("Colunas carregadas do banco:")
+        st.write(df.columns.tolist())
 
-                        # Mapa
-                        st.subheader("🗺️ Localizações no Mapa")
-                        map_df = df_mais_proximas[['Latitude', 'Longitude']].rename(
-                            columns={"Latitude": "lat", "Longitude": "lon"}
-                        )
-                        st.map(map_df)
+        if not all(col in df.columns for col in colunas_necessarias):
+            st.error("❌ A tabela não possui todas as colunas necessárias.")
+            st.stop()
 
+        # Geocodificação
+        lat_user, lon_user = geocodificar_cidade(cidade_input, uf_input, api_key)
+        st.write("Localização atual:", lat_user, lon_user)
+
+        if lat_user is None or lon_user is None:
+            st.stop()
+
+        df = df.dropna(subset=['latitude', 'longitude'])
+        st.write("Exemplo de coordenadas do banco:")
+        st.write(df[['cidade_origem', 'latitude', 'longitude']].head())
+
+        if df.empty:
+            st.warning("⚠️ Nenhum dado com coordenadas encontrado no banco.")
+            st.stop()
+
+        # Calcular distância
+        df['distancia_km'] = calcular_distancia_vetorizada(
+            lat_user, lon_user,
+            df['latitude'].values,
+            df['longitude'].values
+        )
+
+        df_mais_proximas = df.sort_values("distancia_km").head(raio)
+
+        st.success(f"✅ Encontradas {len(df_mais_proximas)} transportadoras próximas")
+
+        # Exibir resultados
+        cols = st.columns(2)
+        for idx, row in df_mais_proximas.iterrows():
+            with cols[idx % 2]:
+                st.info(f"📍 {row['cidade_origem']}/{row['uf_origem']} - {row['distancia_km']:.2f} km")
+                st.write(f"**Grupo de WhatsApp:** {row['nome_grupo']}")
+                st.write(f"**Transportadora:** {row['transportadora']}")
+                st.write(f"**Contato:** {row['contato']}")
+                st.markdown("---")
+
+        # Mapa (se houver dados)
+        st.subheader("🗺️ Localizações no Mapa")
+        if not df_mais_proximas.empty:
+            map_df = df_mais_proximas[['latitude', 'longitude']].rename(
+                columns={'latitude': 'lat', 'longitude': 'lon'}
+            )
+            st.map(map_df)
+        else:
+            st.warning("⚠️ Nenhuma localização para exibir no mapa.")
