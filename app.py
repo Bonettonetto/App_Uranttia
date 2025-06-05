@@ -39,6 +39,10 @@ def carregar_dados_postgres():
     except Exception as e:
         st.error(f"❌ Erro ao conectar ao banco de dados: {str(e)}")
         return None
+    
+
+df = carregar_dados_postgres()
+st.write("Pré-visualização dos dados do banco:", df)
 
 # Distância Haversine vetorizada
 def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
