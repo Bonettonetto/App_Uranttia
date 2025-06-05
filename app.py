@@ -6,6 +6,8 @@ from math import radians, sin, cos, sqrt, atan2
 import os
 from dotenv import load_dotenv
 import numpy as np
+import json
+from pathlib import Path
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -16,6 +18,19 @@ st.set_page_config(
     layout="wide",
     page_icon="🚛"
 )
+
+# Cache para geocodificação
+CACHE_FILE = "geocoding_cache.json"
+
+def carregar_cache_geocodificacao():
+    if Path(CACHE_FILE).exists():
+        with open(CACHE_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def salvar_cache_geocodificacao(cache):
+    with open(CACHE_FILE, 'w') as f:
+        json.dump(cache, f)
 
 # Cache para melhorar performance
 @st.cache_data(ttl=3600)
@@ -49,16 +64,40 @@ def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return R * c
 
-# Geocodificação via OpenCage
-def geocodificar_cidade(cidade, uf, api_key):
+# Geocodificação via OpenCage com cache
+def geocodificar_cidade(cidade, uf, api_key=None):
+    # Carregar cache
+    cache = carregar_cache_geocodificacao()
+    
+    # Criar chave única para a cidade/UF
+    cache_key = f"{cidade.lower()}_{uf.lower()}"
+    
+    # Verificar se já temos no cache
+    if cache_key in cache:
+        return cache[cache_key]['lat'], cache[cache_key]['lon']
+    
+    # Se não temos no cache, usar API
     try:
+        # Usar API key do ambiente se não fornecida
+        api_key = api_key or os.getenv('OPENCAGE_API_KEY')
+        if not api_key:
+            st.error("❌ Chave da API OpenCage não configurada")
+            return None, None
+            
         url = f"https://api.opencagedata.com/geocode/v1/json?q={cidade},+{uf},+Brasil&key={api_key}&language=pt&limit=1"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
         data = response.json()
+        
         if data['results']:
             geometry = data['results'][0]['geometry']
-            return geometry['lat'], geometry['lng']
+            lat, lon = geometry['lat'], geometry['lng']
+            
+            # Salvar no cache
+            cache[cache_key] = {'lat': lat, 'lon': lon}
+            salvar_cache_geocodificacao(cache)
+            
+            return lat, lon
         else:
             st.warning("⚠️ Cidade não encontrada")
             return None, None
@@ -79,7 +118,13 @@ with st.sidebar:
     st.header("📍 Localização Atual do Caminhão")
     cidade_input = st.text_input("Cidade atual", placeholder="Ex: São Paulo")
     uf_input = st.text_input("UF", placeholder="Ex: SP", max_chars=2)
-    api_key = st.text_input("Chave da API OpenCage", type="password")
+    
+    # Mostrar campo de API key apenas se não estiver configurada no ambiente
+    if not os.getenv('OPENCAGE_API_KEY'):
+        api_key = st.text_input("Chave da API OpenCage", type="password")
+    else:
+        api_key = None
+        
     raio = st.slider("Mostrar quantas cidades mais próximas?", 1, 20, 5)
     buscar = st.button("🔎 Buscar cidade(s) mais próxima(s)")
 
@@ -89,7 +134,7 @@ if buscar:
         st.warning("⚠️ Por favor, preencha cidade e UF")
     elif not validar_uf(uf_input):
         st.error("❌ UF inválida")
-    elif not api_key:
+    elif not api_key and not os.getenv('OPENCAGE_API_KEY'):
         st.warning("⚠️ Por favor, insira a chave da API")
     else:
         df = carregar_dados_postgres()
