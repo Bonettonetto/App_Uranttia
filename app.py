@@ -159,13 +159,7 @@ if buscar:
         if lat_user is None:
             st.warning("⚠️ Coordenadas não encontradas para esta cidade/UF.")
         else:
-            print("lat_user:", lat_user, "lon_user:", lon_user)
-            print("df['latitude']:", df['latitude'].head())
-            print("df['longitude']:", df['longitude'].head())
-
             df = df.dropna(subset=['latitude', 'longitude'])
-            df['latitude'] = df['latitude'].astype(float)
-            df['longitude'] = df['longitude'].astype(float)
 
             df['Distancia_km'] = calcular_distancia_vetorizada(
                 lat_user, lon_user,
