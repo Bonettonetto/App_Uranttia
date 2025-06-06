@@ -83,54 +83,11 @@ def validar_uf(uf):
 # Interface
 st.title("🚛 Localizador de Cargas por Proximidade")
 
-# Carrega e exibe a tabela de dados
+# Carrega dados do banco
 df = carregar_dados_postgres()
-if df is not None:
-    st.subheader("📋 Base de Dados de Transportadoras")
-    
-    # Adiciona filtros
-    col1, col2 = st.columns(2)
-    with col1:
-        uf_filtro = st.selectbox(
-            "Filtrar por UF",
-            ["Todas"] + sorted(df["uf_origem"].unique().tolist())
-        )
-    with col2:
-        termo_busca = st.text_input("🔍 Buscar por nome da transportadora ou cidade", "")
-    
-    # Aplica filtros
-    df_filtrado = df.copy()
-    if uf_filtro != "Todas":
-        df_filtrado = df_filtrado[df_filtrado["uf_origem"] == uf_filtro]
-    if termo_busca:
-        termo_busca = termo_busca.lower()
-        df_filtrado = df_filtrado[
-            df_filtrado["transportadora"].str.lower().str.contains(termo_busca) |
-            df_filtrado["cidade_origem"].str.lower().str.contains(termo_busca)
-        ]
-    
-    # Exibe a tabela com paginação
-    st.dataframe(
-        df_filtrado[[
-            "cidade_origem", "uf_origem", "transportadora",
-            "nome_grupo", "contato", "produto", "preco"
-        ]].rename(columns={
-            "cidade_origem": "Cidade",
-            "uf_origem": "UF",
-            "transportadora": "Transportadora",
-            "nome_grupo": "Grupo WhatsApp",
-            "contato": "Contato",
-            "produto": "Produto",
-            "preco": "Preço"
-        }),
-        use_container_width=True,
-        hide_index=True
-    )
-    
-    # Exibe estatísticas
-    st.caption(f"Total de registros: {len(df_filtrado)}")
-else:
+if df is None:
     st.error("❌ Não foi possível carregar os dados do banco de dados")
+    st.stop()
 
 with st.sidebar:
     st.header("📍 Localização Atual do Caminhão")
@@ -151,11 +108,6 @@ if buscar:
         if lat_user is None:
             st.warning("⚠️ Coordenadas não encontradas para esta cidade/UF.")
         else:
-            df = carregar_dados_postgres()
-
-            if df is None:
-                st.stop()
-
             df = df.dropna(subset=['latitude', 'longitude'])
 
             df['Distancia_km'] = calcular_distancia_vetorizada(
