@@ -5,6 +5,8 @@ from math import radians, sin, cos, sqrt, atan2
 import os
 from dotenv import load_dotenv
 import numpy as np
+import unicodedata
+from fuzzywuzzy import fuzz
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -15,12 +17,19 @@ st.set_page_config(
     layout="wide",
     page_icon="🚛"
 )
-""
+
+# Função para remover acentos
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
+
 # Carrega a base de municípios
 @st.cache_data(ttl=86400)
 def carregar_municipios():
-    df = pd.read_csv("municipios.csv")
-    df["nome"] = df["nome"].str.lower().str.strip()
+    df = pd.read_csv("Municipios.csv")
+    df["municipio"] = df["municipio"].astype(str).str.strip()
+    df["uf"] = df["uf"].astype(str).str.strip().str.upper()
     return df
 
 # Cache para dados do PostgreSQL
@@ -39,7 +48,6 @@ def carregar_dados_postgres():
     except Exception as e:
         st.error(f"❌ Erro ao conectar ao banco de dados: {str(e)}")
         return None
-    
 
 # Distância Haversine vetorizada
 def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
@@ -52,25 +60,15 @@ def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return R * c
 
-# Retorna coordenadas a partir da cidade + UF
-def buscar_coordenadas_local(cidade, uf, resultado):
-    df_uf = resultado[resultado["uf"] == uf.upper()]
+# Busca coordenadas a partir de cidade e UF com fuzzy
+def buscar_coordenadas_local(cidade, uf, municipios_df):
+    df_uf = municipios_df[municipios_df["uf"] == uf.upper()]
     cidade_normalizada = remover_acentos(cidade).upper().strip()
     correspondencias = df_uf["municipio"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
     melhor_idx = correspondencias.idxmax()
     if correspondencias[melhor_idx] >= 80:
         return df_uf.loc[melhor_idx, "latitude"], df_uf.loc[melhor_idx, "longitude"]
     return None, None
-
-
-def uf_para_codigo(uf):
-    mapa = {
-        'RO': 11, 'AC': 12, 'AM': 13, 'RR': 14, 'PA': 15, 'AP': 16, 'TO': 17,
-        'MA': 21, 'PI': 22, 'CE': 23, 'RN': 24, 'PB': 25, 'PE': 26, 'AL': 27,
-        'SE': 28, 'BA': 29, 'MG': 31, 'ES': 32, 'RJ': 33, 'SP': 35, 'PR': 41,
-        'SC': 42, 'RS': 43, 'MS': 50, 'MT': 51, 'GO': 52, 'DF': 53
-    }
-    return mapa.get(uf)
 
 # Validação
 def validar_uf(uf):
@@ -88,7 +86,7 @@ if df is None:
 # Exibe a tabela com filtros
 st.subheader("📋 Base de Dados de Transportadoras")
 
-# Adiciona filtros
+# Filtros
 col1, col2 = st.columns(2)
 with col1:
     uf_filtro = st.selectbox(
@@ -109,7 +107,7 @@ if termo_busca:
         df_filtrado["cidade_origem"].str.lower().str.contains(termo_busca)
     ]
 
-# Exibe a tabela com paginação
+# Exibe a tabela
 st.dataframe(
     df_filtrado[[
         "cidade_origem", "uf_origem", "transportadora",
@@ -127,9 +125,9 @@ st.dataframe(
     hide_index=True
 )
 
-# Exibe estatísticas
 st.caption(f"Total de registros: {len(df_filtrado)}")
 
+# Sidebar
 with st.sidebar:
     st.header("📍 Localização Atual do Caminhão")
     cidade_input = st.text_input("Cidade atual", placeholder="Ex: São Paulo")
