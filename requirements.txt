@@ -5,4 +5,7 @@ requests
 python-dotenv
 numpy
 fuzzywuzzy
+<<<<<<< HEAD
 
+=======
+>>>>>>> 84e832a (Update requirements.txt)
