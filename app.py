@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide",
     page_icon="🚛"
 )
-
+""
 # Carrega a base de municípios
 @st.cache_data(ttl=86400)
 def carregar_municipios():
@@ -40,9 +40,6 @@ def carregar_dados_postgres():
         st.error(f"❌ Erro ao conectar ao banco de dados: {str(e)}")
         return None
     
-
-df = carregar_dados_postgres()
-st.write("Pré-visualização dos dados do banco:", df)
 
 # Distância Haversine vetorizada
 def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
