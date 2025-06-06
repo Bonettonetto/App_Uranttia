@@ -17,6 +17,12 @@ st.set_page_config(
     page_icon="🚛"
 )
 ""
+
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
+
 # Carrega a base de municípios
 @st.cache_data(ttl=86400)
 def carregar_municipios():
@@ -174,8 +180,3 @@ if buscar:
             st.subheader("🗺️ Localizações no Mapa")
             map_df = df_mais_proximas[['latitude', 'longitude']].rename(columns={"latitude": "lat", "longitude": "lon"})
             st.map(map_df)
-
-def remover_acentos(texto):
-    if pd.isna(texto):
-        return ""
-    return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
