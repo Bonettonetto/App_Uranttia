@@ -17,8 +17,8 @@ st.set_page_config(
     layout="wide",
     page_icon="🚛"
 )
+""
 
-# Função para remover acentos
 def remover_acentos(texto):
     if pd.isna(texto):
         return ""
@@ -27,9 +27,8 @@ def remover_acentos(texto):
 # Carrega a base de municípios
 @st.cache_data(ttl=86400)
 def carregar_municipios():
-    df = pd.read_csv("Municipios.csv")
-    df["municipio"] = df["municipio"].astype(str).str.lower().str.strip()
-    df["uf"] = df["uf"].astype(str).str.upper().str.strip()
+    df = pd.read_csv("municipios.csv")
+    df["nome"] = df["nome"].str.lower().str.strip()
     return df
 
 # Cache para dados do PostgreSQL
@@ -48,6 +47,7 @@ def carregar_dados_postgres():
     except Exception as e:
         st.error(f"❌ Erro ao conectar ao banco de dados: {str(e)}")
         return None
+    
 
 # Distância Haversine vetorizada
 def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
@@ -64,7 +64,7 @@ def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
 def buscar_coordenadas_local(cidade, uf, resultado):
     df_uf = resultado[resultado["uf"] == uf.upper()]
     cidade_normalizada = remover_acentos(cidade).upper().strip()
-    correspondencias = df_uf["municipio"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
+    correspondencias = df_uf["nome"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
     if correspondencias.empty:
         return None, None
     melhor_idx = correspondencias.idxmax()
@@ -72,12 +72,19 @@ def buscar_coordenadas_local(cidade, uf, resultado):
         return df_uf.loc[melhor_idx, "latitude"], df_uf.loc[melhor_idx, "longitude"]
     return None, None
 
+
+def uf_para_codigo(uf):
+    mapa = {
+        'RO': 11, 'AC': 12, 'AM': 13, 'RR': 14, 'PA': 15, 'AP': 16, 'TO': 17,
+        'MA': 21, 'PI': 22, 'CE': 23, 'RN': 24, 'PB': 25, 'PE': 26, 'AL': 27,
+        'SE': 28, 'BA': 29, 'MG': 31, 'ES': 32, 'RJ': 33, 'SP': 35, 'PR': 41,
+        'SC': 42, 'RS': 43, 'MS': 50, 'MT': 51, 'GO': 52, 'DF': 53
+    }
+    return mapa.get(uf)
+
 # Validação
 def validar_uf(uf):
-    return uf.upper() in [
-        'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
-        'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
-    ]
+    return uf.upper() in ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
 # Interface
 st.title("🚛 Localizador de Cargas por Proximidade")
@@ -91,10 +98,13 @@ if df is None:
 # Exibe a tabela com filtros
 st.subheader("📋 Base de Dados de Transportadoras")
 
-# Filtros
+# Adiciona filtros
 col1, col2 = st.columns(2)
 with col1:
-    uf_filtro = st.selectbox("Filtrar por UF", ["Todas"] + sorted(df["uf_origem"].unique().tolist()))
+    uf_filtro = st.selectbox(
+        "Filtrar por UF",
+        ["Todas"] + sorted(df["uf_origem"].unique().tolist())
+    )
 with col2:
     termo_busca = st.text_input("🔍 Buscar por nome da transportadora ou cidade", "")
 
@@ -127,9 +137,9 @@ st.dataframe(
     hide_index=True
 )
 
+# Exibe estatísticas
 st.caption(f"Total de registros: {len(df_filtrado)}")
 
-# Interface lateral
 with st.sidebar:
     st.header("📍 Localização Atual do Caminhão")
     cidade_input = st.text_input("Cidade atual", placeholder="Ex: São Paulo")
@@ -137,7 +147,6 @@ with st.sidebar:
     raio = st.slider("Mostrar quantas cidades mais próximas?", 1, 20, 5)
     buscar = st.button("🔎 Buscar cidade(s) mais próxima(s)")
 
-# Resultado da busca por coordenadas
 if buscar:
     if not cidade_input or not uf_input:
         st.warning("⚠️ Por favor, preencha cidade e UF")
@@ -147,9 +156,13 @@ if buscar:
         municipios_df = carregar_municipios()
         lat_user, lon_user = buscar_coordenadas_local(cidade_input, uf_input, municipios_df)
 
-        if lat_user is None or lon_user is None:
+        if lat_user is None:
             st.warning("⚠️ Coordenadas não encontradas para esta cidade/UF.")
         else:
+            print("lat_user:", lat_user, "lon_user:", lon_user)
+            print("df['latitude']:", df['latitude'].head())
+            print("df['longitude']:", df['longitude'].head())
+
             df = df.dropna(subset=['latitude', 'longitude'])
             df['latitude'] = df['latitude'].astype(float)
             df['longitude'] = df['longitude'].astype(float)
