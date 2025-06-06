@@ -53,16 +53,15 @@ def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
     return R * c
 
 # Retorna coordenadas a partir da cidade + UF
-def buscar_coordenadas_local(cidade, uf, municipios_df):
-    cidade = cidade.strip().lower()
-    uf = uf.strip().upper()
-    resultado = municipios_df[(municipios_df["nome"] == cidade)]
-    if resultado.empty:
-        return None, None
-    df_uf = resultado[resultado["codigo_uf"] == uf_para_codigo(uf)]
-    if not df_uf.empty:
-        return df_uf.iloc[0]["latitude"], df_uf.iloc[0]["longitude"]
+def buscar_coordenadas_local(cidade, uf, resultado):
+    df_uf = resultado[resultado["uf"] == uf.upper()]
+    cidade_normalizada = remover_acentos(cidade).upper().strip()
+    correspondencias = df_uf["municipio"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
+    melhor_idx = correspondencias.idxmax()
+    if correspondencias[melhor_idx] >= 80:
+        return df_uf.loc[melhor_idx, "latitude"], df_uf.loc[melhor_idx, "longitude"]
     return None, None
+
 
 def uf_para_codigo(uf):
     mapa = {
