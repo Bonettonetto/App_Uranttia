@@ -5,6 +5,7 @@ from math import radians, sin, cos, sqrt, atan2
 import os
 from dotenv import load_dotenv
 import numpy as np
+import unicodedata
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -173,3 +174,8 @@ if buscar:
             st.subheader("🗺️ Localizações no Mapa")
             map_df = df_mais_proximas[['latitude', 'longitude']].rename(columns={"latitude": "lat", "longitude": "lon"})
             st.map(map_df)
+
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
