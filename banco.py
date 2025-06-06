@@ -14,6 +14,14 @@ def remover_acentos(texto):
         return ""
     return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
 
+import unicodedata
+
+def remover_acentos(texto):
+    if pd.isna(texto):
+        return ""
+    return unicodedata.normalize("NFKD", str(texto)).encode("ASCII", "ignore").decode("utf-8")
+
+
 try:
     # 1. Carrega a base de municípios com sigla da UF
     df_coords = pd.read_csv("Municipios.csv", dtype={"nome": str, "uf": str, "latitude": float, "longitude": float})
