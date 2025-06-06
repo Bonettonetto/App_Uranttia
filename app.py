@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 import numpy as np
 import unicodedata
+from fuzzywuzzy import fuzz
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -63,7 +64,9 @@ def calcular_distancia_vetorizada(lat1, lon1, lats, lons):
 def buscar_coordenadas_local(cidade, uf, resultado):
     df_uf = resultado[resultado["uf"] == uf.upper()]
     cidade_normalizada = remover_acentos(cidade).upper().strip()
-    correspondencias = df_uf["municipio"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
+    correspondencias = df_uf["nome"].apply(lambda x: fuzz.ratio(remover_acentos(x).upper().strip(), cidade_normalizada))
+    if correspondencias.empty:
+        return None, None
     melhor_idx = correspondencias.idxmax()
     if correspondencias[melhor_idx] >= 80:
         return df_uf.loc[melhor_idx, "latitude"], df_uf.loc[melhor_idx, "longitude"]
