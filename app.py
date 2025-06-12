@@ -19,6 +19,11 @@ st.set_page_config(
 )
 ""
 
+
+
+
+
+
 def remover_acentos(texto):
     if pd.isna(texto):
         return ""

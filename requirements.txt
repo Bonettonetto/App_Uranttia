@@ -4,4 +4,5 @@ pandas
 requests
 python-dotenv
 numpy
+fuzzywuzzy
 
